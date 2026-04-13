@@ -1,0 +1,86 @@
+(function autoFillEvaluations() {
+    console.log("🚀 Starting Auto-Evaluation...");
+
+    const TARGET_TEXT = ["strongly agree", "excellent", "outstanding", "very good", "agree"];
+    let count = 0;
+
+    // ── 1. NATIVE <select> ELEMENTS ──────────────────────────────────────────
+    document.querySelectorAll('select').forEach(select => {
+        const options = Array.from(select.options);
+        const best = options.find(o =>
+            TARGET_TEXT.some(t => o.text.toLowerCase().includes(t))
+        ) || options[1]; // fallback: first real option (index 1, skipping placeholder)
+
+        if (best && select.value !== best.value) {
+            select.value = best.value;
+            ['change', 'input', 'blur'].forEach(e =>
+                select.dispatchEvent(new Event(e, { bubbles: true }))
+            );
+            count++;
+        }
+    });
+
+    // ── 2. CUSTOM DIV/SPAN DROPDOWNS (React / Angular style) ─────────────────
+    // Step A: Click every dropdown trigger to reveal options
+    const triggers = document.querySelectorAll(
+        '[class*="select"], [class*="dropdown"], [class*="picker"], ' +
+        '[role="combobox"], [role="listbox"], [aria-haspopup="listbox"], ' +
+        '[aria-haspopup="true"], [data-toggle="dropdown"]'
+    );
+
+    triggers.forEach(trigger => {
+        // Skip if it's already an open menu or a plain <select>
+        if (trigger.tagName === 'SELECT') return;
+        trigger.click();
+
+        // After opening, find matching option in the revealed list
+        setTimeout(() => {
+            const allVisible = document.querySelectorAll(
+                '[role="option"], [class*="option"], [class*="item"], ' +
+                '[class*="menu-item"], [class*="list-item"]'
+            );
+
+            let picked = false;
+            for (const opt of allVisible) {
+                const txt = opt.textContent.trim().toLowerCase();
+                if (TARGET_TEXT.some(t => txt.includes(t))) {
+                    opt.click();
+                    count++;
+                    picked = true;
+                    break;
+                }
+            }
+
+            // If nothing matched, close the dropdown
+            if (!picked) trigger.click();
+        }, 150);
+    });
+
+    // ── 3. FIRST AVAILABLE OPTION FALLBACK ───────────────────────────────────
+    // For any dropdown still showing a placeholder like "Select..."
+    setTimeout(() => {
+        document.querySelectorAll(
+            '[role="option"], [class*="option"]'
+        ).forEach(opt => {
+            const txt = opt.textContent.trim().toLowerCase();
+            if (txt === 'select...' || txt === 'select' || txt === '--') return;
+            if (TARGET_TEXT.some(t => txt.includes(t))) {
+                opt.click();
+                count++;
+            }
+        });
+
+        // ── 4. TEXTAREAS ──────────────────────────────────────────────────────
+        document.querySelectorAll('textarea, input[type="text"]').forEach(inp => {
+            if (inp.offsetParent !== null && inp.value.trim() === '') {
+                inp.value = 'Excellent teaching. Very clear and helpful.';
+                ['input', 'change'].forEach(e =>
+                    inp.dispatchEvent(new Event(e, { bubbles: true }))
+                );
+            }
+        });
+
+        alert(`✅ Done! Filled ${count} fields.\n\nPlease scroll through and verify before submitting.`);
+    }, 800);
+
+})();
